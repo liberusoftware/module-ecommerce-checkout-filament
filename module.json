@@ -1,0 +1,40 @@
+{
+    "$schema": "https://schemas.liberu.dev/module/v1.json",
+    "name": "ecommerce-checkout-filament",
+    "display_name": "Checkout Administration",
+    "description": "Optional Filament administration for the Checkout domain module: sessions, their frozen lines, their tenders and their consent evidence, read-only throughout except for closing a session as abandoned.",
+    "version": "0.1.0",
+    "category": "presentation",
+    "provider": "Liberu\\Ecommerce\\Checkout\\Filament\\CheckoutFilamentServiceProvider",
+    "requires": {
+        "php": "^8.5",
+        "laravel": "^13.0",
+        "packages": {
+            "liberusoftware/module-manager": "^1.4",
+            "liberusoftware/ecommerce-checkout": "^0.1"
+        }
+    },
+    "presentation": {
+        "filament": {
+            "admin": [
+                "Liberu\\Ecommerce\\Checkout\\Filament\\CheckoutPlugin"
+            ]
+        }
+    },
+    "capabilities": [
+        "ecommerce.checkout.filament"
+    ],
+    "default_enabled": false,
+    "features": [
+        "Checkout sessions",
+        "Frozen line snapshots",
+        "Integer minor unit totals",
+        "Tender reconciliation",
+        "Consent evidence",
+        "Placement record",
+        "Abandonment",
+        "Stale and expired filters",
+        "Team scoping",
+        "Read-only by default"
+    ]
+}
