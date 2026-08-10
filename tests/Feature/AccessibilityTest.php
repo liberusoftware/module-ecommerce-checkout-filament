@@ -31,10 +31,13 @@ it('says whether a tender counts rather than relying on the badge colour', funct
     $this->actorForTeam(7);
 
     $session = aCheckout();
-    app(RecordTender::class)->handle($session, amountMinor: 2399, status: TenderStatus::Pending);
-    app(RecordTender::class)->handle($session->fresh(), amountMinor: 100, status: TenderStatus::Captured);
 
-    $tenders = $session->fresh()->tenders;
+    // Held onto rather than read back off the relation: `tenders()` carries no
+    // ordering — several per session are allowed and none of them is first —
+    // so an assertion indexing into the collection would be asserting about
+    // whichever row the database felt like returning.
+    $pending = app(RecordTender::class)->handle($session, amountMinor: 2399, status: TenderStatus::Pending);
+    $captured = app(RecordTender::class)->handle($session->fresh(), amountMinor: 100, status: TenderStatus::Captured);
 
     Livewire::test(TendersRelationManager::class, [
         'ownerRecord' => $session,
@@ -43,19 +46,17 @@ it('says whether a tender counts rather than relying on the badge colour', funct
         ->assertOk()
         // Green and grey are the same badge to a screen reader and to anybody
         // who cannot separate the two. The verdict is a word in its own column.
-        ->assertTableColumnStateSet('counts', 'Not counted', $tenders->firstOrFail())
-        ->assertTableColumnStateSet('counts', 'Counted', $tenders->last())
-        ->assertTableColumnFormattedStateSet('status', 'Pending', $tenders->firstOrFail());
+        ->assertTableColumnStateSet('counts', 'Not counted', $pending)
+        ->assertTableColumnStateSet('counts', 'Counted', $captured)
+        ->assertTableColumnFormattedStateSet('status', 'Pending', $pending);
 });
 
 it('says whether a consent was agreed or refused, in a word', function () {
     $this->actorForTeam(7);
 
     $session = aCheckout();
-    app(RecordConsent::class)->handle($session, type: 'terms', documentVersion: '1');
-    app(RecordConsent::class)->handle($session, type: 'marketing', documentVersion: '1', agreed: false);
-
-    $consents = $session->fresh()->consents;
+    $agreed = app(RecordConsent::class)->handle($session, type: 'terms', documentVersion: '1');
+    $refused = app(RecordConsent::class)->handle($session, type: 'marketing', documentVersion: '1', agreed: false);
 
     // A refusal is evidence too, and a blank cell cannot be told apart from a
     // form that never rendered.
@@ -64,8 +65,8 @@ it('says whether a consent was agreed or refused, in a word', function () {
         'pageClass' => ViewCheckoutSession::class,
     ])
         ->assertOk()
-        ->assertTableColumnStateSet('agreed', 'Agreed', $consents->firstOrFail())
-        ->assertTableColumnStateSet('agreed', 'Refused', $consents->last());
+        ->assertTableColumnStateSet('agreed', 'Agreed', $agreed)
+        ->assertTableColumnStateSet('agreed', 'Refused', $refused);
 });
 
 it('says whether a line is taxed rather than showing a tick and a blank', function () {
