@@ -1,84 +1,81 @@
-# Ecommerce: Checkout Filament
+# Checkout Administration
 
-> This optional Filament 5 presentation package presents exactly one independent domain module. It contributes reusable resources, pages, widgets, schemas, tables, infolists, and actions to application-owned panels while delegating authorization, validation, tenancy, persistence, and business rules to the ecommerce-checkout public boundary. It must
+Filament administration for [`liberusoftware/ecommerce-checkout`](https://github.com/liberusoftware/module-ecommerce-checkout).
 
-[Software](https://liberusoftware.com) ·
-[Hosting](https://liberuhosting.com) ·
-[Services](https://liberuservices.com) ·
-[Liberu Group](https://liberugroup.com)
-
-![PHP](https://img.shields.io/badge/PHP-8.5-777BB4?logo=php&logoColor=white) ![Laravel](https://img.shields.io/badge/Laravel-13-FF2D20?logo=laravel&logoColor=white) ![Filament](https://img.shields.io/badge/Filament-5-FDAE4B)
-[![Latest release](https://img.shields.io/github/v/release/liberusoftware/module-ecommerce-checkout-filament?sort=semver)](https://github.com/liberusoftware/module-ecommerce-checkout-filament/releases/latest) [![Tests](https://github.com/liberusoftware/module-ecommerce-checkout-filament/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/liberusoftware/module-ecommerce-checkout-filament/actions/workflows/tests.yml)
-
-## Features
-
-- Fully compatible with **Laravel 13**, **PHP 8.5**, and **Pest 5**.
-- Built following the domain-driven design guidelines of the Liberu architecture.
-- Reusable, presenting a clean public contract and boundaries.
-- Adheres to the strict database, security, and authorization standards of Liberu.
-
-## Requirements
-
-- **PHP 8.5**
-- **Composer 2**
-- A supported database (e.g. MySQL, PostgreSQL, SQLite)
-
-## Quick start
-
-To install this package via Composer, run:
+A checkout session is a financial record in flight: it holds the prices a shopper agreed to, the
+addresses they gave, the evidence of what they consented to, and the tenders a payment provider
+reported. This package puts all of that on a screen. It lets staff change almost none of it, and that
+is the design rather than an unfinished corner.
 
 ```bash
-composer require liberusoftware/module-ecommerce-checkout-filament
+composer config repositories.ecommerce-checkout vcs https://github.com/liberusoftware/module-ecommerce-checkout
+composer require liberusoftware/ecommerce-checkout-filament
 ```
+
+```dotenv
+MODULES_ENABLED=ecommerce-checkout,ecommerce-checkout-filament
+```
+
+```php
+use Liberu\Ecommerce\Checkout\Filament\CheckoutPlugin;
+
+$panel->plugins([
+    CheckoutPlugin::make(),
+]);
+```
+
+Full instructions, including what the host has to supply, are in [docs/adoption.md](docs/adoption.md).
+
+## What staff can do
+
+| | |
+| --- | --- |
+| Read a checkout session, its frozen lines, its tenders and its consent evidence | Yes |
+| See whether the money that came back equals the money owed | Yes |
+| See whether a commit was recorded, and when | Yes |
+| Close a stuck session as **abandoned**, with a reason from a fixed list | Yes |
+| Create a checkout | **No** — the domain policy denies it outright |
+| Delete a checkout, or anything hanging off one | **No** — the domain policy denies it outright |
+| Edit a line, a price, a tax figure, a tender or a consent | **No** |
+| Place a checkout — commit the money | **No**, deliberately: see below |
+
+Every one of those refusals is argued in [docs/domain.md](docs/domain.md). The short version is that
+this data is a copy of what somebody agreed to, and editing a copy does not correct a record, it
+falsifies one.
+
+Placing is absent because `PlaceCheckout` takes an idempotency key **from its caller**, and that key
+is the entire guarantee against a double charge. A button minting a fresh key on every press would be
+a button that charges twice on a double click. Committing money belongs to the storefront and the API,
+which have a client-supplied key to pass.
+
+## What it deliberately keeps out of reach
+
+Consents carry an IP address and a user agent. Tenders carry a provider reference. Both are readable
+here, on a page `CheckoutSessionPolicy` guards — that is what evidence is *for*. What this package
+never does is let any of it travel somewhere with weaker access control:
+
+- **Nothing sensitive is searchable or filterable.** A table's search term and its filter state are
+  both persisted into the URL, and a query string is written into every access log on the path. The
+  only searchable column in this package is a numeric id.
+- **The abandonment reason is a select, not a text box.** The domain's own logger writes that value
+  into a `checkout.abandoned` log line, and a text box is where somebody types a customer's email
+  address.
+- **No notification body names a shopper.**
+- **The session token is never shown.** It is the guest's whole authorisation to their own checkout.
+- **The idempotency key is never shown.** It is a replay credential, and it is text a *client* chose.
+
+`tests/Feature/EvidenceTest.php` asserts each of these.
+
+## Compatibility
+
+PHP 8.5, Laravel 13, Filament 5. The plugin does not require the panel to be tenant-aware.
 
 ## Documentation
 
-- [Liberu Main Documentation](https://github.com/liberusoftware/documentation)
-- [Architecture & Standards Index](https://github.com/liberusoftware/documentation/tree/main/architecture)
+- [docs/domain.md](docs/domain.md) — what this surface shows, what it refuses, and why each refusal.
+- [docs/adoption.md](docs/adoption.md) — installing, enabling, attaching, and what the host supplies.
+- [docs/runbook.md](docs/runbook.md) — the questions this panel exists to answer, in order.
 
-## Related Liberu Projects
+## Licence
 
-| Project | Repository | Purpose |
-| --- | --- | --- |
-| **Boilerplate** | [liberusoftware/boilerplate-laravel](https://github.com/liberusoftware/boilerplate-laravel) | Shared Laravel application foundation and reference composition |
-| **CMS** | [liberu-cms/cms-laravel](https://github.com/liberu-cms/cms-laravel) | Structured content, publishing, media, multisite, and headless delivery |
-| **CRM** | [liberu-crm/crm-laravel](https://github.com/liberu-crm/crm-laravel) | Customer data, sales, marketing, service, and customer success |
-| **Billing** | [liberu-billing/billing-laravel](https://github.com/liberu-billing/billing-laravel) | Products, subscriptions, invoicing, payments, and provisioning |
-| **Accounting** | [liberu-accounting/accounting-laravel](https://github.com/liberu-accounting/accounting-laravel) | Ledgers, banking, tax, expenses, close, and financial reporting |
-| **Ecommerce** | [liberu-ecommerce/ecommerce-laravel](https://github.com/liberu-ecommerce/ecommerce-laravel) | Catalog, checkout, orders, fulfillment, returns, B2B, and omnichannel commerce |
-| **Control Panel** | [liberu-control-panel/control-panel-laravel](https://github.com/liberu-control-panel/control-panel-laravel) | Hosting, infrastructure, DNS, mail, databases, backups, and security operations |
-| **Automation** | [liberu-automation/automation-laravel](https://github.com/liberu-automation/automation-laravel) | Governed workflows, provider-neutral AI, approvals, and connectors |
-
-## Security
-
-Please do not report security vulnerabilities through public GitHub issues.
-Follow our [Security Policy](https://github.com/liberusoftware/documentation/blob/main/architecture/SECURITY.md) for private reporting and supported versions.
-
-## License
-
-This project is open-source software. You may use, modify, and distribute it
-under the terms described in [LICENSE.md](LICENSE.md).
-
-The linked license text is authoritative; this summary is not legal advice.
-
-## Feedback and contributing
-
-Feedback and contributions are welcome. You can help by reporting reproducible
-bugs, proposing focused enhancements, improving documentation or translations,
-and submitting tested code changes.
-
-Before contributing, please read [CONTRIBUTING.md](https://github.com/liberusoftware/documentation/blob/main/standards/CONTRIBUTING.md) and our
-[Code of Conduct](https://github.com/liberusoftware/documentation/blob/main/architecture/CODE_OF_CONDUCT.md). Search existing issues first, then use
-the appropriate issue template. Pull requests should explain the problem and
-approach, remain focused, include or update tests, pass the required workflows,
-and document user-visible or breaking changes.
-
-## Contributors
-
-Thank you to everyone who helps improve Liberu.
-
-<a href="https://github.com/liberusoftware/module-ecommerce-checkout-filament/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=liberusoftware/module-ecommerce-checkout-filament" alt="Contributors to liberusoftware/module-ecommerce-checkout-filament">
-</a>
-
-[View the full contributors graph](https://github.com/liberusoftware/module-ecommerce-checkout-filament/graphs/contributors).
+MIT. See [LICENSE.md](LICENSE.md).
